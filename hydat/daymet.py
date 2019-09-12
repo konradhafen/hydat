@@ -1,10 +1,11 @@
-import urllib
+import urllib.request
 
 TIMESTEP = {"day": 1328, "month": 1345, "year": 1343}
 VARIABLES = ["tmin", "tmax", "prcp", "dayl", "srad", "swe", "vp"]
 REGIONS = ["na", "hawaii", "puertorico"]
 
-def buildURL(year, variable, timestep='day', region='na', extent=[]):
+
+def buildDaymetURL(year, variable, timestep='day', region='na', extent=None):
     """
     Build URL to download DayMet data by DayMet region
     Args:
@@ -14,14 +15,17 @@ def buildURL(year, variable, timestep='day', region='na', extent=[]):
         vp (vapor pressure)
         timestep: day, month, or year
         region: one of na (North America), hawaii (Hawaii), or puertorico (Puerto Rico)
-        extent: 
+        extent:
 
     Returns:
         url (string) to download data for a region
 
     """
-    urlBase = 'https://thredds.daac.ornl.gov/thredds/fileServer/ornldaac/' + TIMESTEP[timestep] + '/'
+    urlBase = 'https://thredds.daac.ornl.gov/thredds/fileServer/ornldaac/' + str(TIMESTEP[timestep]) + '/'
     url = urlBase + str(year) + '/daymet_v3_' + variable + '_' + str(year) + '_' + region + '.nc4'
     return url
 
-def downloadURL(url, fn):
+
+def downloadDaymet(fn, year, variable, timestep='day', region='na', extent=None):
+    url = buildDaymetURL(year, variable, timestep, region, extent)
+    urllib.request.urlretrieve(url, fn)
