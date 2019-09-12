@@ -1,0 +1,7 @@
+/.idea
+*.pyc
+/dist/
+/build/\ntest.py
+/*.egg
+/*.egg-info
+
