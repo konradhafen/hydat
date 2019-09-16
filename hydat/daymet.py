@@ -60,7 +60,7 @@ def buildDaymetURL(year, variable, timestep='day', region='na', extent=None, str
     else:
         urlbase = 'https://thredds.daac.ornl.gov/thredds/fileServer/ornldaac/' + str(TIMESTEP[timestep]) + '/'
         if timestep == "day":
-            url = urlbase + str(year) + 'daymet_v3_' + variable + '_' + str(year) + '_' + region + '.nc4'
+            url = urlbase + str(year) + '/daymet_v3_' + variable + '_' + str(year) + '_' + region + '.nc4'
         elif timestep == "month":
             if variable == "prcp":
                 sumstat = "monttl"
@@ -86,7 +86,6 @@ def checkInputs(extent, region, timestep, variable):
     checkVariable(variable)
     if timestep in ["month", "year"] and variable in ["dayl", "swe", "srad"]:
         raise ValueError("'" + variable + "' is only available at a daily timestep")
-
 
 
 def checkExtent(extent):
@@ -125,4 +124,5 @@ def downloadDaymet(fn, year, variable, timestep='day', region='na', extent=None,
     if overwrite:
         if os.path.exists(fn):
             os.remove(fn)
+    #print(url)
     wget.download(url, fn)
