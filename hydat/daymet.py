@@ -19,6 +19,7 @@ def buildDaymetURL(year, variable, timestep='day', region='na', extent=None, str
         timestep: day, month, or year
         region: one of na (North America), hawaii (Hawaii), or puertorico (Puerto Rico)
         extent: list of bounding coordinates [n, s, e, w]
+        stride: time stride (default: 1)
 
     Returns:
         url (string) to download data for a region
@@ -28,22 +29,30 @@ def buildDaymetURL(year, variable, timestep='day', region='na', extent=None, str
     checkInputs(extent, region, timestep, variable)
     if extent is not None:
         if timestep == "day":
-            url = "https://thredds.daac.ornl.gov/thredds/ncss/ornldaac/" + str(TIMESTEP[timestep]) + "/" + str(year) + \
+            url = "https://thredds.daac.ornl.gov/thredds/fileServer/ornldaac/" + str(TIMESTEP[timestep]) + "/" + str(year) + \
                   "/daymet_v3_" + variable + "_1980_" + region + ".nc4?var=lat&var=lon&var=" + variable + "&north=" + \
                   str(extent[0]) + "&west=" + str(extent[3]) + "&east=" + str(extent[2]) + "&south=" + str(extent[1]) + \
                   "&disableProjSubset=on&horizStride=" + str(stride) + "&time_start=" + str(year) + \
                   "-01-01T12%3A00%3A00Z&time_end=" + str(year) + "-12-30T12%3A00%3A00Z&timeStride=" + str(stride) + \
                   "&accept=netcdf"
         elif timestep == "month":
-            url = "https://thredds.daac.ornl.gov/thredds/ncss/ornldaac/" + str(TIMESTEP[timestep]) + "/" + \
-                  "/daymet_v3_" + variable + "_monttl_1980_" + region + ".nc4?var=lat&var=lon&var=" + variable + "&north=" + \
+            if variable == "prcp":
+                sumstat = "monttl"
+            else:
+                sumstat = "monavg"
+            url = "https://thredds.daac.ornl.gov/thredds/ncss/ornldaac/" + str(TIMESTEP[timestep]) + \
+                  "/daymet_v3_" + variable + "_" + sumstat + "_1980_" + region + ".nc4?var=lat&var=lon&var=" + variable + "&north=" + \
                   str(extent[0]) + "&west=" + str(extent[3]) + "&east=" + str(extent[2]) + "&south=" + str(extent[1]) + \
                   "&disableProjSubset=on&horizStride=" + str(stride) + "&time_start=" + str(year) + \
                   "-01-01T12%3A00%3A00Z&time_end=" + str(year) + "-12-30T12%3A00%3A00Z&timeStride=" + str(stride) + \
                   "&accept=netcdf"
         elif timestep == "year":
-            url = "https://thredds.daac.ornl.gov/thredds/ncss/ornldaac/" + str(TIMESTEP[timestep]) + "/" + \
-                  "/daymet_v3_" + variable + "_annttl_1980_" + region + ".nc4?var=lat&var=lon&var=" + variable + "&north=" + \
+            if variable == "prcp":
+                sumstat = "annttl"
+            else:
+                sumstat = "annavg"
+            url = "https://thredds.daac.ornl.gov/thredds/ncss/ornldaac/" + str(TIMESTEP[timestep]) + \
+                  "/daymet_v3_" + variable + "_" + sumstat + "_1980_" + region + ".nc4?var=lat&var=lon&var=" + variable + "&north=" + \
                   str(extent[0]) + "&west=" + str(extent[3]) + "&east=" + str(extent[2]) + "&south=" + str(extent[1]) + \
                   "&disableProjSubset=on&horizStride=" + str(stride) + "&time_start=" + str(year) + \
                   "-01-01T12%3A00%3A00Z&time_end=" + str(year) + "-12-30T12%3A00%3A00Z&timeStride=" + str(stride) + \
@@ -51,11 +60,19 @@ def buildDaymetURL(year, variable, timestep='day', region='na', extent=None, str
     else:
         urlbase = 'https://thredds.daac.ornl.gov/thredds/fileServer/ornldaac/' + str(TIMESTEP[timestep]) + '/'
         if timestep == "day":
-            url = urlbase + str(year) + '/daymet_v3_' + variable + '_' + str(year) + '_' + region + '.nc4'
+            url = urlbase + str(year) + 'daymet_v3_' + variable + '_' + str(year) + '_' + region + '.nc4'
         elif timestep == "month":
-            url = urlbase + '/daymet_v3_' + variable + '_monttl_' + str(year) + '_' + region + '.nc4'
+            if variable == "prcp":
+                sumstat = "monttl"
+            else:
+                sumstat = "monavg"
+            url = urlbase + 'daymet_v3_' + variable + '_' + sumstat + '_' + str(year) + '_' + region + '.nc4'
         elif timestep == "year":
-            url = urlbase + '/daymet_v3_' + variable + '_annttl_' + str(year) + '_' + region + '.nc4'
+            if variable == "prcp":
+                sumstat = "annttl"
+            else:
+                sumstat = "annavg"
+            url = urlbase + 'daymet_v3_' + variable + '_' + sumstat + '_' + str(year) + '_' + region + '.nc4'
         else:
             raise ValueError("Invalid Daymet timestep. Must be one of 'day', 'month', or 'year'")
 
@@ -92,6 +109,7 @@ def checkRegion(region):
     if region not in list(REGIONS.values()):
         raise ValueError("'" + region + "' is an invalid Daymet region. Must be one of " +
                          str(list(REGIONS.values())))
+
 
 def checkVariable(variable):
     if variable not in list(VARIABLES.values()):

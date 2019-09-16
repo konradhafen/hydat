@@ -1,8 +1,10 @@
 from setuptools import setup
 
+
 def readme():
     with open('README.rst') as f:
         return f.read()
+
 
 setup(name='hydat',
       version='0.0.9',
@@ -21,7 +23,6 @@ setup(name='hydat',
       license='GPLv3',
       packages=['hydat'],
       install_requires=[
-
-      ],
+            'wget'],
       include_package_data=True,
       zip_safe=False)
