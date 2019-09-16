@@ -84,6 +84,9 @@ def checkInputs(extent, region, timestep, variable):
     checkRegion(region)
     checkTimestep(timestep)
     checkVariable(variable)
+    if timestep in ["month", "year"] and variable in ["dayl", "swe", "srad"]:
+        raise ValueError("'" + variable + "' is only available at a daily timestep")
+
 
 
 def checkExtent(extent):
