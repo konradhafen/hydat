@@ -1,5 +1,7 @@
 import wget
 import os
+import gdal
+import numpy as np
 
 TIMESTEP = {"day": 1328, "month": 1345, "year": 1343}
 VARIABLES = {"Minimum Temperature": "tmin", "Maximum Temperature": "tmax", "Precipitation": "prcp",
@@ -126,3 +128,46 @@ def downloadDaymet(fn, year, variable, timestep='day', region='na', extent=None,
             os.remove(fn)
     #print(url)
     wget.download(url, fn)
+    return
+
+
+def monthlySWEMax():
+    return
+
+
+def SWEAccumulation(year_start, year_end, output_dir, region='na', extent=None, calc_month=True, download=True,
+                    fn_base=None):
+    swe_prev = None
+    swe = None
+    if download:
+        os.chdir(output_dir)
+        output_dir = ""
+
+    for year in range(year_start, year_end+1):
+        if download:
+            fn = "temp_swe_" + str(year) + ".nc"
+            downloadDaymet(fn, year, "swe", region=region, extent=extent, overwrite=True)
+            fn_day = "swe_accum_day_" + str(year) + ".nc"
+            fn_month = "swe_accum_month_" + str(year) + ".nc"
+        else:
+            fn = fn_base.replace("*year*", str(year))
+            fn_day = output_dir + "swe_accum_day_" + str(year) + ".nc"
+            fn_month = output_dir + "swe_accum_month_" + str(year) + ".nc"
+        ds = gdal.Open('NETCDF:"'+fn+'":swe')
+        ndays = ds.RasterCount
+        for i in range(1, ndays+1):
+            if swe is not None:
+                swe_prev = swe
+            swe = ds.GetRasterBand(1).ReadAsArray()
+            if swe_prev is not None:
+                swe_accum = swe - swe_prev
+            else:
+                swe_accum = np.zeros(swe)
+    ds = None
+    ds_out_year = None
+    ds_out_month = None
+    return
+
+
+def SWEAdjustedPrecip():
+    return
