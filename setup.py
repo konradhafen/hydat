@@ -23,6 +23,6 @@ setup(name='hydat',
       license='GPLv3',
       packages=['hydat'],
       install_requires=[
-            'wget', 'gdal', 'numpy'],
+            'wget', 'gdal', 'numpy', 'netCDF4'],
       include_package_data=True,
       zip_safe=False)
