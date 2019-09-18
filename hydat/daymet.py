@@ -1,6 +1,6 @@
 import wget
 import os
-import gdal
+import netCDF4 as nc
 import numpy as np
 
 TIMESTEP = {"day": 1328, "month": 1345, "year": 1343}
@@ -8,6 +8,8 @@ VARIABLES = {"Minimum Temperature": "tmin", "Maximum Temperature": "tmax", "Prec
              "Day Length": "dayl", "Shortwave Radiation": "srad", "Snow-Water Equivalent": "swe",
              "Vapor Pressure": "vp"}
 REGIONS = {"North America": "na", "Hawaii": "hawaii", "Puerto Rico": "puertorico"}
+MONTH_END = np.cumsum(np.array([31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]))
+MONTH_END_LEAP = np.cumsum(np.array([31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]))
 
 
 def buildDaymetURL(year, variable, timestep='day', region='na', extent=None, stride=1):
@@ -126,46 +128,70 @@ def downloadDaymet(fn, year, variable, timestep='day', region='na', extent=None,
     if overwrite:
         if os.path.exists(fn):
             os.remove(fn)
-    #print(url)
     wget.download(url, fn)
     return
+
+
+def getMonthEndList(year):
+    if leap_year(year):
+        return MONTH_END_LEAP
+    else:
+        return MONTH_END
+
+
+def leap_year(y):
+    if y % 400 == 0:
+        return True
+    if y % 100 == 0:
+        return False
+    if y % 4 == 0:
+        return True
+    else:
+        return False
 
 
 def monthlySWEMax():
     return
 
 
-def SWEAccumulation(year_start, year_end, output_dir, region='na', extent=None, calc_month=True, download=True,
-                    fn_base=None):
+def dailySWEAccumulation(year_start, year_end, output_dir, fn_base):
     swe_prev = None
-    swe = None
-    if download:
-        os.chdir(output_dir)
-        output_dir = ""
-
+    os.chdir(output_dir)
     for year in range(year_start, year_end+1):
-        if download:
-            fn = "temp_swe_" + str(year) + ".nc"
-            downloadDaymet(fn, year, "swe", region=region, extent=extent, overwrite=True)
-            fn_day = "swe_accum_day_" + str(year) + ".nc"
-            fn_month = "swe_accum_month_" + str(year) + ".nc"
-        else:
-            fn = fn_base.replace("*year*", str(year))
-            fn_day = output_dir + "swe_accum_day_" + str(year) + ".nc"
-            fn_month = output_dir + "swe_accum_month_" + str(year) + ".nc"
-        ds = gdal.Open('NETCDF:"'+fn+'":swe')
-        ndays = ds.RasterCount
-        for i in range(1, ndays+1):
-            if swe is not None:
-                swe_prev = swe
-            swe = ds.GetRasterBand(1).ReadAsArray()
-            if swe_prev is not None:
-                swe_accum = swe - swe_prev
-            else:
-                swe_accum = np.zeros(swe)
-    ds = None
-    ds_out_year = None
-    ds_out_month = None
+        fn = fn_base.replace("%year%", str(year))
+        fn_out = "swe_accum_day_" + str(year) + ".nc"
+        ds = nc.Dataset(fn)
+        ndays = ds.variables['swe'].shape[0]
+        ds_out = nc.Dataset(fn_out, 'w', format='NETCDF4')
+        # ds_out = gis.createGDALRaster(fn_out, ds.RasterYSize, ds.RasterXSize, ndays, geot=ds.GetGeoTransform(),
+        #                               drivername="NetCDF")
+        # print("ds", ds.RasterXSize, ds.RasterYSize)
+        # print("ds_out", ds_out.RasterXSize, ds_out.RasterYSize)
+        # #ndv = ds.GetRasterBand(1).GetNoDataValue()
+        # ndays=1
+        # for day in range(1, ndays+1):
+        #     if swe_prev is None:
+        #         swe_prev = ds.GetRasterBand(1).ReadAsArray()
+        #     else:
+        #         swe_prev = swe
+        #     print("read swe", day)
+        #     swe = ds.GetRasterBand(day).ReadAsArray()
+        #     print("swe read")
+        #     swe[swe == ndv] = np.nan
+        #     swe_accum = np.subtract(swe, swe_prev)
+        #     swe_accum[np.isnan(swe_accum)] = ndv
+        #     result = ds_out.GetRasterBand(day).WriteArray(swe_accum)
+        #     print("write result", result)
+        #     print(day, year)
+        # print(year, "done")
+        # del ds
+        # print("ds closed")
+        # del ds_out
+        # print("ds_out closed")
+    return
+
+
+def SWEAccumulationMonthly(fn, swe_path, year, month):
     return
 
 
