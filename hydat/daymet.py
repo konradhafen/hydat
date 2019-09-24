@@ -2,6 +2,7 @@ import wget
 import os
 import netCDF4 as nc
 import numpy as np
+import hydat.gis as gis
 
 TIMESTEP = {"day": 1328, "month": 1345, "year": 1343}
 VARIABLES = {"Minimum Temperature": "tmin", "Maximum Temperature": "tmax", "Precipitation": "prcp",
@@ -10,6 +11,7 @@ VARIABLES = {"Minimum Temperature": "tmin", "Maximum Temperature": "tmax", "Prec
 REGIONS = {"North America": "na", "Hawaii": "hawaii", "Puerto Rico": "puertorico"}
 MONTH_END = np.cumsum(np.array([31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]))
 MONTH_END_LEAP = np.cumsum(np.array([31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]))
+NO_DATA_VALUE = -9999.0  # Daymet no data value
 
 
 def buildDaymetURL(year, variable, timestep='day', region='na', extent=None, stride=1):
@@ -155,14 +157,29 @@ def monthlySWEMax():
 
 
 def dailySWEAccumulation(year_start, year_end, output_dir, fn_base):
+    varname = 'swe'
     swe_prev = None
+    swe = None
     os.chdir(output_dir)
     for year in range(year_start, year_end+1):
         fn = fn_base.replace("%year%", str(year))
         fn_out = "swe_accum_day_" + str(year) + ".nc"
+        gis.copyNetCDF(fn, fn_out, exclude_data=['swe'])
+        ds_out = nc.Dataset(fn_out, 'r+')
         ds = nc.Dataset(fn)
         ndays = ds.variables['swe'].shape[0]
-        ds_out = nc.Dataset(fn_out, 'w', format='NETCDF4')
+        for day in range(0, ndays):
+            if swe_prev is None:
+                swe_prev = ds[varname][day, :, :]
+            else:
+                swe_prev = swe
+            swe = ds[varname][day, :, :]
+            swe[swe == NO_DATA_VALUE] = np.nan
+            ds_out[varname][day, :, :] = np.subtract(swe, swe_prev)
+            ds_out[varname][day, :, :][np.isnan(ds_out[varname][day, :, :])] = NO_DATA_VALUE
+            print("day", day)
+        ds_out.close()
+
         # ds_out = gis.createGDALRaster(fn_out, ds.RasterYSize, ds.RasterXSize, ndays, geot=ds.GetGeoTransform(),
         #                               drivername="NetCDF")
         # print("ds", ds.RasterXSize, ds.RasterYSize)
