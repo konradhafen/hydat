@@ -35,11 +35,11 @@ def buildDaymetURL(year, variable, timestep='day', region='na', extent=None, str
     checkInputs(extent, region, timestep, variable)
     if extent is not None:
         if timestep == "day":
-            url = "https://thredds.daac.ornl.gov/thredds/fileServer/ornldaac/" + str(TIMESTEP[timestep]) + "/" + str(year) + \
-                  "/daymet_v3_" + variable + "_1980_" + region + ".nc4?var=lat&var=lon&var=" + variable + "&north=" + \
+            url = "https://thredds.daac.ornl.gov/thredds/ncss/ornldaac/" + str(TIMESTEP[timestep]) + "/" + str(year) + \
+                  "/daymet_v3_" + variable + "_" + str(year) + "_" + region + ".nc4?var=" + variable + "&north=" + \
                   str(extent[0]) + "&west=" + str(extent[3]) + "&east=" + str(extent[2]) + "&south=" + str(extent[1]) + \
                   "&disableProjSubset=on&horizStride=" + str(stride) + "&time_start=" + str(year) + \
-                  "-01-01T12%3A00%3A00Z&time_end=" + str(year) + "-12-30T12%3A00%3A00Z&timeStride=" + str(stride) + \
+                  "-01-01T12%3A00%3A00Z&time_end=" + str(year) + "-12-31T12%3A00%3A00Z&timeStride=" + str(stride) + \
                   "&accept=netcdf"
         elif timestep == "month":
             if variable == "prcp":
@@ -47,7 +47,7 @@ def buildDaymetURL(year, variable, timestep='day', region='na', extent=None, str
             else:
                 sumstat = "monavg"
             url = "https://thredds.daac.ornl.gov/thredds/ncss/ornldaac/" + str(TIMESTEP[timestep]) + \
-                  "/daymet_v3_" + variable + "_" + sumstat + "_1980_" + region + ".nc4?var=lat&var=lon&var=" + variable + "&north=" + \
+                  "/daymet_v3_" + variable + "_" + sumstat + "_" + str(year) + "_" + region + ".nc4?var=" + variable + "&north=" + \
                   str(extent[0]) + "&west=" + str(extent[3]) + "&east=" + str(extent[2]) + "&south=" + str(extent[1]) + \
                   "&disableProjSubset=on&horizStride=" + str(stride) + "&time_start=" + str(year) + \
                   "-01-01T12%3A00%3A00Z&time_end=" + str(year) + "-12-30T12%3A00%3A00Z&timeStride=" + str(stride) + \
@@ -58,10 +58,10 @@ def buildDaymetURL(year, variable, timestep='day', region='na', extent=None, str
             else:
                 sumstat = "annavg"
             url = "https://thredds.daac.ornl.gov/thredds/ncss/ornldaac/" + str(TIMESTEP[timestep]) + \
-                  "/daymet_v3_" + variable + "_" + sumstat + "_1980_" + region + ".nc4?var=lat&var=lon&var=" + variable + "&north=" + \
+                  "/daymet_v3_" + variable + "_" + sumstat + "_" + str(year) + "_" + region + ".nc4?var=" + variable + "&north=" + \
                   str(extent[0]) + "&west=" + str(extent[3]) + "&east=" + str(extent[2]) + "&south=" + str(extent[1]) + \
                   "&disableProjSubset=on&horizStride=" + str(stride) + "&time_start=" + str(year) + \
-                  "-01-01T12%3A00%3A00Z&time_end=" + str(year) + "-12-30T12%3A00%3A00Z&timeStride=" + str(stride) + \
+                  "-01-01T12%3A00%3A00Z&time_end=" + str(year) + "-12-31T12%3A00%3A00Z&timeStride=" + str(stride) + \
                   "&accept=netcdf"
     else:
         urlbase = 'https://thredds.daac.ornl.gov/thredds/fileServer/ornldaac/' + str(TIMESTEP[timestep]) + '/'
@@ -81,7 +81,6 @@ def buildDaymetURL(year, variable, timestep='day', region='na', extent=None, str
             url = urlbase + 'daymet_v3_' + variable + '_' + sumstat + '_' + str(year) + '_' + region + '.nc4'
         else:
             raise ValueError("Invalid Daymet timestep. Must be one of 'day', 'month', or 'year'")
-
     return url
 
 
@@ -99,7 +98,7 @@ def checkExtent(extent):
         if len(extent) == 4:
             if extent[0] < extent[1]:
                 raise ValueError("southern latitude (" + str(extent[1]) + ") is greater than northern latitude (" +
-                                 str(extent[1]) + ")")
+                                 str(extent[0]) + ")")
             elif extent[2] < extent[3]:
                 raise ValueError("western longitude (" + str(extent[3]) + ") is greater than eastern longitude(" +
                                  str(extent[2]) + ")")
@@ -126,10 +125,25 @@ def checkVariable(variable):
 
 
 def downloadDaymet(fn, year, variable, timestep='day', region='na', extent=None, overwrite=False):
+    """
+    Downloads Datmet climate data.
+    Args:
+        fn: filename to save data; data are downloaded in NetCDF format and contain data for an entire calendar year
+        year: year for which to download data
+        variable: one of 'prcp', 'swe', 'tmax', 'tmin', 'dayl', 'vp'; check daymet documentation for variable descriptions
+        timestep: one of 'day' (default), 'month', or 'year'; not that not all timesteps are available fore all variables
+        region: one of 'na' (default), 'hawaii', or 'puertorico'
+        extent: list of geographic coordinates (decimal degrees) in the format [north, south, east, west]
+        overwrite: should download overwrite an existing file (default: False)
+
+    Returns:
+
+    """
     url = buildDaymetURL(year, variable, timestep, region, extent)
     if overwrite:
         if os.path.exists(fn):
             os.remove(fn)
+    print(url)
     wget.download(url, fn)
     return
 
@@ -179,32 +193,42 @@ def dailySWEAccumulation(year_start, year_end, output_dir, fn_base):
             ds_out[varname][day, :, :][np.isnan(ds_out[varname][day, :, :])] = NO_DATA_VALUE
             print("day", day)
         ds_out.close()
+    return
 
-        # ds_out = gis.createGDALRaster(fn_out, ds.RasterYSize, ds.RasterXSize, ndays, geot=ds.GetGeoTransform(),
-        #                               drivername="NetCDF")
-        # print("ds", ds.RasterXSize, ds.RasterYSize)
-        # print("ds_out", ds_out.RasterXSize, ds_out.RasterYSize)
-        # #ndv = ds.GetRasterBand(1).GetNoDataValue()
-        # ndays=1
-        # for day in range(1, ndays+1):
-        #     if swe_prev is None:
-        #         swe_prev = ds.GetRasterBand(1).ReadAsArray()
-        #     else:
-        #         swe_prev = swe
-        #     print("read swe", day)
-        #     swe = ds.GetRasterBand(day).ReadAsArray()
-        #     print("swe read")
-        #     swe[swe == ndv] = np.nan
-        #     swe_accum = np.subtract(swe, swe_prev)
-        #     swe_accum[np.isnan(swe_accum)] = ndv
-        #     result = ds_out.GetRasterBand(day).WriteArray(swe_accum)
-        #     print("write result", result)
-        #     print(day, year)
-        # print(year, "done")
-        # del ds
-        # print("ds closed")
-        # del ds_out
-        # print("ds_out closed")
+
+def monthlySWEAccumulation(year_start, year_end, output_dir, swe_base):
+
+    varname = 'swe'
+    swe_prev = None
+    swe = None
+    os.chdir(output_dir)
+    for year in range(year_start, year_end+1):
+        month = 1
+        ds_swe = nc.Dataset(swe_base.replace("%year%", str(year)))
+        month_swe = np.zeros((12, ds_swe.variables['swe'].shape[1], ds_swe.variables['swe'].shape[2]))
+        month_end_day = getMonthEndList(year)
+        ndays = month_end_day[-1]
+        for day in range(0, ndays):
+            if swe_prev is None:
+                swe_prev = ds_swe[varname][day, :, :]
+            else:
+                swe_prev = swe
+            swe = ds_swe[varname][day, :, :]
+            swe[swe == NO_DATA_VALUE] = np.nan
+            month_swe[month-1, :, :] = np.add(month_swe[month-1, :, :], np.subtract(swe, swe_prev))
+            if day + 1 == month_end_day[month-1]:
+                month += 1
+    return
+
+
+def monthlyWaterInput(year_start, year_end, output_dir, ppt_base, swe_base):
+
+    os.chdir(output_dir)
+    for year in range(year_start, year_end+1):
+        ds_ppt = nc.Dataset(ppt_base.replace("%year%", str(year)))
+        ds_swe = nc.Dataset(swe_base.replace("%year%", str(year)))
+        month = 1
+        ndays = ds_ppt.variables['ppt'].shape[0]
     return
 
 
