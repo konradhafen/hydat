@@ -16,7 +16,9 @@ def copyNetCDF(fn_src, fn_dst, exclude_vars=[], exclude_data=[]):
     """
     with nc.Dataset(fn_src) as src, nc.Dataset(fn_dst, "w") as dst:
         # copy global attributes all at once via dictionary
-        dst.setncatts(src.__dict__)
+        exclude = ['_NCProperties']
+        setdict = {i:src.__dict__[i] for i in src.__dict__ if i not in exclude}  # don't copy NCProperties, it throws an error
+        dst.setncatts(setdict)
         # copy dimensions
         for name, dimension in src.dimensions.items():
             dst.createDimension(
@@ -32,7 +34,7 @@ def copyNetCDF(fn_src, fn_dst, exclude_vars=[], exclude_data=[]):
 
 
 def createMonthlySWENetCDF(fn_src, fn_dst, varname):
-    copyNetCDF(fn_src, fn_dst, exclude_vars=['swe', 'time'])
+    copyNetCDF(fn_src, fn_dst, exclude_vars=['swe', 'time', varname])
     ds = nc.Dataset(fn_dst, 'r+')
     ds.createVariable('time', np.float64, ('time',))
     ds.createVariable(varname, np.float32, ('time', 'y', 'x'))
