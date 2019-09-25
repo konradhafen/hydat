@@ -166,10 +166,6 @@ def leap_year(y):
         return False
 
 
-def monthlySWEMax():
-    return
-
-
 def dailySWEAccumulation(year_start, year_end, output_dir, fn_base):
     varname = 'swe'
     swe_prev = None
@@ -199,25 +195,32 @@ def dailySWEAccumulation(year_start, year_end, output_dir, fn_base):
 def monthlySWEAccumulation(year_start, year_end, output_dir, swe_base):
 
     varname = 'swe'
-    swe_prev = None
-    swe = None
+    accumname = 'swe_accum'
     os.chdir(output_dir)
     for year in range(year_start, year_end+1):
-        month = 1
-        ds_swe = nc.Dataset(swe_base.replace("%year%", str(year)))
+        fn_out = "swe_accum_" + str(year) + ".nc"
+        fn_in = swe_base.replace("%year%", str(year))
+        gis.createMonthlySWENetCDF(fn_in, fn_out, accumname)
+        ds_swe = nc.Dataset(fn_in)
         month_swe = np.zeros((12, ds_swe.variables['swe'].shape[1], ds_swe.variables['swe'].shape[2]))
         month_end_day = getMonthEndList(year)
-        ndays = month_end_day[-1]
-        for day in range(0, ndays):
-            if swe_prev is None:
-                swe_prev = ds_swe[varname][day, :, :]
-            else:
-                swe_prev = swe
-            swe = ds_swe[varname][day, :, :]
-            swe[swe == NO_DATA_VALUE] = np.nan
-            month_swe[month-1, :, :] = np.add(month_swe[month-1, :, :], np.subtract(swe, swe_prev))
-            if day + 1 == month_end_day[month-1]:
-                month += 1
+        month_end_day[-1] = 365  # Daymet drops data for Dec 31 on leap years
+        for i in range(0, len(month_end_day)):
+            end_day = month_end_day[i] - 1
+            swe_start = ds_swe[varname][i, :, :]
+            swe_start[swe_start == NO_DATA_VALUE] = np.nan
+            # print(ds_swe[varname].shape, end_day, month_end_day)
+            swe_end = ds_swe[varname][end_day, :, :]
+            swe_end[swe_end == NO_DATA_VALUE] = np.nan
+            month_swe[i, :, :] = np.subtract(swe_end, swe_start)
+        month_swe[np.isnan(month_swe)] = NO_DATA_VALUE
+        ds_out = nc.Dataset(fn_out, 'r+')
+        ds_out[accumname][:] = month_swe
+        ds_out.close()
+        print(year, "monthly SWE accumulation finished")
+
+
+def monthlySWEMax():
     return
 
 
