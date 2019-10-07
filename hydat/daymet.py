@@ -192,6 +192,31 @@ def dailySWEAccumulation(year_start, year_end, output_dir, fn_base):
     return
 
 
+def montlyAverageDayl(year_start, year_end, output_dir, dayl_base):
+    varname = 'dayl'
+    daylname = 'daylavg'
+    os.chdir(output_dir)
+    for year in range(year_start, year_end+1):
+        fn_out = "dayl_avg_s_" + str(year) + ".nc"
+        fn_in = dayl_base.replace("%year%", str(year))
+        gis.createMonthlyDaylNetCDF(fn_in, fn_out, daylname)
+        ds_dayl = nc.Dataset(fn_in)
+        month_dayl = np.zeros((12, ds_dayl.variables[varname].shape[1], ds_dayl.variables[varname].shape[2]))
+        month_end_day = getMonthEndList(year)
+        month_end_day[-1] = 365  # Daymet drops data for Dec 31 on leap years
+        day_start = 0
+        for i in range(0, len(month_end_day)):
+            month_dat = ds_dayl[varname][day_start:month_end_day[i], :, :]
+            month_dat[month_dat == NO_DATA_VALUE] = np.nan
+            month_dayl[i, :, :] = np.average(month_dat, axis=0)
+            day_start = month_end_day[i]
+        ds_out = nc.Dataset(fn_out, 'r+')
+        month_dayl[np.isnan(month_dayl)] = NO_DATA_VALUE
+        ds_out[daylname][:] = month_dayl
+        ds_out.close()
+        print(year, "monthly dayl average finished")
+
+
 def monthlySWEAccumulation(year_start, year_end, output_dir, swe_base):
 
     varname = 'swe'
@@ -232,12 +257,4 @@ def monthlyWaterInput(year_start, year_end, output_dir, ppt_base, swe_base):
         ds_swe = nc.Dataset(swe_base.replace("%year%", str(year)))
         month = 1
         ndays = ds_ppt.variables['ppt'].shape[0]
-    return
-
-
-def SWEAccumulationMonthly(fn, swe_path, year, month):
-    return
-
-
-def SWEAdjustedPrecip():
     return

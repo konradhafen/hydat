@@ -33,9 +33,22 @@ def copyNetCDF(fn_src, fn_dst, exclude_vars=[], exclude_data=[]):
                 dst[name].setncatts(src[name].__dict__)
 
 
+def createMonthlyDaylNetCDF(fn_src, fn_dst, varname):
+    copyNetCDF(fn_src, fn_dst, exclude_vars=['dayl', 'time', varname])
+    ds = nc.Dataset(fn_dst, 'r+')
+    ds.createVariable('time', np.float64, ('time',))
+    ds.createVariable(varname, np.float32, ('time', 'y', 'x'))
+    ds.close()
+
+
 def createMonthlySWENetCDF(fn_src, fn_dst, varname):
     copyNetCDF(fn_src, fn_dst, exclude_vars=['swe', 'time', varname])
     ds = nc.Dataset(fn_dst, 'r+')
     ds.createVariable('time', np.float64, ('time',))
     ds.createVariable(varname, np.float32, ('time', 'y', 'x'))
     ds.close()
+    return
+
+
+def indexRaster():
+    return
