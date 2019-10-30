@@ -1,16 +1,19 @@
 import datetime
+import os
+import wget
 
 class PRISMDownloader:
-    def __init__(self, var, res, year=None, month=None, day=None, normals=False):
+    def __init__(self):
         self.vars = ['ppt', 'tmin', 'tmax', 'tmean']
-        self.var = self.checkVar(var)
-        self.res = self.checkResolution(res)
+        self.var = None
+        self.res = None
         self.min_year = 1895  # earliest year data are available
         self.hist_year = 1981  # less than this retrieve historical data
-        self.year = self.checkYear(year)
-        self.month = self.checkMonth(month)
-        self.day = self.checkDay(day)
-        self.normals = normals
+        self.is_historical = None
+        self.year = None
+        self.month = None
+        self.day = None
+        self.normals = None
         self.url = None
         self.url_base = 'http://services.nacse.org/prism/data/public/'
 
@@ -28,48 +31,14 @@ class PRISMDownloader:
             else:
                 raise Exception('A valid year must be specified')
 
-    def checkDay(self, day):
+    def setDay(self, day):
         if day is None:
-            return ''
+            self.day = ''
         else:
             if type(day) != int or (day < 1 or day > 31):
                 raise Exception("Day value must be an integer between 1 and 31")
             else:
-                return str(day).zfill(2)
-
-    def checkMonth(self, month):
-        if month is None:
-            return ''
-        else:
-            if type(month) != int or (month > 12 or month < 1):
-                raise Exception("Month value must be an integer between 1 and 12")
-            else:
-                return str(month).zfill(2)
-
-    def checkResolution(self, res):
-        if res is 800 or res is '800m':
-            return '800m'
-        elif res is 4 or res is '4km':
-            return '4km'
-        else:
-            raise Exception('Please enter a valid resolution value, options are 800m or 4km')
-
-    def checkVar(self, var):
-        if var in self.vars:
-            return var
-        else:
-            raise Exception('Please enter a valid variable, options are: {}'.format(self.vars))
-
-    def checkYear(self, year):
-        if year is None:
-            return ''
-        else:
-            if year < self.min_year:
-                raise Exception("Year must not be earlier than {}".format(self.min_year))
-            elif year > int(datetime.datetime.now().year):
-                raise Exception("Year cannot be greater than the current year")
-            else:
-                return str(year)
+                self.day = str(day).zfill(2)
 
     def setHistoricalYear(self, year):
         """
@@ -81,6 +50,15 @@ class PRISMDownloader:
 
         """
         self.hist_year = year
+
+    def setMonth(self, month):
+        if month is None:
+            self.month = ''
+        else:
+            if type(month) != int or (month > 12 or month < 1):
+                raise Exception("Month value must be an integer between 1 and 12")
+            else:
+                self.month = str(month).zfill(2)
 
     def setNormals(self, normals):
         """
@@ -95,3 +73,44 @@ class PRISMDownloader:
             self.normals = normals
         else:
             raise TypeError("Must use boolean value to set normals")
+
+    def setResolution(self, res):
+        if res is 800 or res is '800m':
+            self.res = '800m'
+        elif res is 4 or res is '4km':
+            self.res = '4km'
+        else:
+            raise Exception('Please enter a valid resolution value, options are 800m or 4km')
+
+    def setVar(self, var):
+        if var in self.vars:
+            self.var = var
+        else:
+            raise Exception('Please enter a valid variable, options are: {}'.format(self.vars))
+
+    def setYear(self, year):
+        if year is None:
+            self.year = ''
+        else:
+            if year < self.min_year:
+                raise Exception("Year must not be earlier than {}".format(self.min_year))
+            elif year > int(datetime.datetime.now().year):
+                raise Exception("Year cannot be greater than the current year")
+            else:
+                self.year = str(year)
+                if year < self.hist_year:
+                    self.is_historical = True
+
+    def download(self, fn, var, res='4km', year=None, month=None, day=None, normals=False, overwrite=True):
+        self.setVar(var)
+        self.setResolution(res)
+        self.setYear(year)
+        self.setMonth(month)
+        self.setDay(day)
+        self.setNormals(normals)
+        self.buildURL()
+        if overwrite:
+            if os.path.exists(fn):
+                os.remove(fn)
+        print(self.url)
+        #wget.download(self.url, fn)
