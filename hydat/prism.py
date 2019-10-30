@@ -1,4 +1,4 @@
-
+import datetime
 
 class PRISMDownloader:
     def __init__(self, var, res, year=None, month=None, day=None, normals=False):
@@ -7,20 +7,44 @@ class PRISMDownloader:
         self.res = self.checkResolution(res)
         self.min_year = 1895  # earliest year data are available
         self.hist_year = 1981  # less than this retrieve historical data
-        self.year = year
-        self.month = month
-        self.day = day
+        self.year = self.checkYear(year)
+        self.month = self.checkMonth(month)
+        self.day = self.checkDay(day)
         self.normals = normals
         self.url = None
         self.url_base = 'http://services.nacse.org/prism/data/public/'
 
     def buildURL(self):
         if self.normals:
-            self.url = self.url_base + 'normals/'
             if self.month is None:
                 raise Exception('Must specify a month to download normals')
             else:
-                self.url = self.url + self.res + "/" + self.var + "/" + str(self.month).zfill(2)
+                self.url = self.url_base + 'normals/' + self.res + "/" + self.var + "/" + self.month
+        else:
+            if self.year != '' and int(self.year) >= self.hist_year:
+                self.url = self.url_base + "/" + self.res + "/" + self.var + "/" + self.year + self.month + self.day
+            elif int(self.year) < self.hist_year:
+                self.url = self.url_base + "/" + self.res + "/" + self.var + "/" + self.year
+            else:
+                raise Exception('A valid year must be specified')
+
+    def checkDay(self, day):
+        if day is None:
+            return ''
+        else:
+            if type(day) != int or (day < 1 or day > 31):
+                raise Exception("Day value must be an integer between 1 and 31")
+            else:
+                return str(day).zfill(2)
+
+    def checkMonth(self, month):
+        if month is None:
+            return ''
+        else:
+            if type(month) != int or (month > 12 or month < 1):
+                raise Exception("Month value must be an integer between 1 and 12")
+            else:
+                return str(month).zfill(2)
 
     def checkResolution(self, res):
         if res is 800 or res is '800m':
@@ -35,6 +59,17 @@ class PRISMDownloader:
             return var
         else:
             raise Exception('Please enter a valid variable, options are: {}'.format(self.vars))
+
+    def checkYear(self, year):
+        if year is None:
+            return ''
+        else:
+            if year < self.min_year:
+                raise Exception("Year must not be earlier than {}".format(self.min_year))
+            elif year > int(datetime.datetime.now().year):
+                raise Exception("Year cannot be greater than the current year")
+            else:
+                return str(year)
 
     def setHistoricalYear(self, year):
         """
