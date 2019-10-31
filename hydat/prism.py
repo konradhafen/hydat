@@ -4,6 +4,7 @@ import ftplib
 import zipfile
 import wget
 
+
 class PRISMDownloader:
     def __init__(self):
         self.vars = ['ppt', 'tmin', 'tmax', 'tmean']
@@ -27,7 +28,8 @@ class PRISMDownloader:
         allvar = ''
         monthvar = ''
         if self.is_historical:
-            self.mversion = 'M2'
+            if self.var == 'ppt':
+                self.mversion = 'M2'
             allvar = '_all'
         else:
             self.mversion = 'M3'
@@ -59,21 +61,21 @@ class PRISMDownloader:
 
         self.ftp.cwd(wd)
 
-    def downloadFTP(self, dirname, var, res='4km', year=None, month=None, day=None, normals=False, extract=True,
+    def downloadFTP(self, var, dirname=None, res='4km', year=None, month=None, day=None, normals=False, extract=True,
                     remove_zip=True, overwrite=True):
         if self.ftp is None:
             self.login()
         self.setProperties(var, res, year, month, day, normals)
         self.buildFTPFilename()
         self.changeCWD_FTP()
-        print(self.fn)
-        os.chdir(dirname)
+        if dirname is not None:
+            os.chdir(dirname)
         file = open(self.fn, 'wb')
         self.ftp.retrbinary("RETR " + self.fn, file.write)
         file.close()
         self.ftp.cwd('/')
         if extract:
-            self.extract(dirname + '/' + self.fn, dirname, remove_zip)
+            self.extract(os.getcwd() + '/' + self.fn, dirname, remove_zip)
 
     def downloadWebServices(self, fn, var, res='4km', year=None, month=None, day=None, normals=False, overwrite=True,
                             extract=True, extract_dir=None, remove_zip=True):
@@ -173,6 +175,7 @@ class PRISMDownloader:
     def setYear(self, year):
         if year is None:
             self.year = ''
+            self.is_historical = None
         else:
             if year < self.min_year:
                 raise Exception("Year must not be earlier than {}".format(self.min_year))
@@ -182,3 +185,27 @@ class PRISMDownloader:
                 self.year = str(year)
                 if year < self.hist_year:
                     self.is_historical = True
+                else:
+                    self.is_historical = False
+
+def downloadMonthlyPRISM_FTP(start_year, end_year, output_dir, variables=()):
+    downloader = PRISMDownloader()
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
+    os.chdir(output_dir)
+    for var in variables:
+        if not os.path.exists(var):
+            os.mkdir(var)
+        os.chdir(var)
+        for year in range(start_year, end_year+1):
+            if not os.path.exists(str(year)):
+                os.mkdir(str(year))
+            os.chdir(str(year))
+            for month in range(1, 13):
+                downloader.downloadFTP(var, year=year, month=month)
+                if downloader.is_historical:
+                    break
+            os.chdir('../')
+        os.chdir('../')
+    os.chdir(output_dir)
+
