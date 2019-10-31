@@ -1,5 +1,6 @@
 import datetime
 import os
+import ftplib
 import zipfile
 import wget
 
@@ -10,6 +11,7 @@ class PRISMDownloader:
         self.res = None
         self.min_year = 1895  # earliest year data are available
         self.hist_year = 1981  # less than this retrieve historical data
+        self.mversion = None
         self.is_historical = None
         self.year = None
         self.month = None
@@ -17,6 +19,20 @@ class PRISMDownloader:
         self.normals = None
         self.url = None
         self.url_base = 'http://services.nacse.org/prism/data/public/'
+        self.fnbase = 'PRISM'
+        self.ftp = None
+
+    def buildFTPFilename(self):
+        allvar = ''
+        monthvar = ''
+        if self.is_historical:
+            self.mversion = 'M2'
+            allvar = '_all'
+        else:
+            self.mversion = 'M3'
+            monthvar = self.month
+        self.fnbase = self.fnbase + '_' + self.var + '_stable_' + self.res
+
 
     def buildURL(self):
         if self.normals:
@@ -33,6 +49,8 @@ class PRISMDownloader:
                 raise Exception('A valid year must be specified')
 
     def downloadFTP(self, fn, var, res='4km', year=None, month=None, day=None, normals=False, overwrite=True):
+        if self.ftp is None:
+            self.login()
         self.setProperties(var, res, year, month, day, normals)
 
     def downloadWebServices(self, fn, var, res='4km', year=None, month=None, day=None, normals=False, overwrite=True):
@@ -57,6 +75,10 @@ class PRISMDownloader:
                 os.remove(fn)
         else:
             raise FileExistsError('The file {} does not exist')
+
+    def login(self):
+        self.ftp = ftplib.FTP('prism.nacse.org')
+        self.ftp.login('anonymous', 'email@email.com')
 
     def setDay(self, day):
         if day is None:
@@ -102,12 +124,12 @@ class PRISMDownloader:
             raise TypeError("Must use boolean value to set normals")
 
     def setProperties(self, var, res, year, month, day, normals):
+        self.setNormals(normals)
         self.setVar(var)
         self.setResolution(res)
         self.setYear(year)
         self.setMonth(month)
         self.setDay(day)
-        self.setNormals(normals)
 
     def setResolution(self, res):
         if res is 800 or res is '800m':
