@@ -20,6 +20,7 @@ class PRISMDownloader:
         self.url = None
         self.url_base = 'http://services.nacse.org/prism/data/public/'
         self.fnbase = 'PRISM'
+        self.fn = None
         self.ftp = None
 
     def buildFTPFilename(self):
@@ -31,8 +32,8 @@ class PRISMDownloader:
         else:
             self.mversion = 'M3'
             monthvar = self.month
-        self.fnbase = self.fnbase + '_' + self.var + '_stable_' + self.res
-
+        self.fn = self.fnbase + '_' + self.var + '_stable_' + self.res + self.mversion + '_' + \
+                      self.year + monthvar + allvar + '_bil.zip'
 
     def buildURL(self):
         if self.normals:
@@ -48,12 +49,34 @@ class PRISMDownloader:
             else:
                 raise Exception('A valid year must be specified')
 
-    def downloadFTP(self, fn, var, res='4km', year=None, month=None, day=None, normals=False, overwrite=True):
+    def changeCWD_FTP(self):
+        if self.normals:
+            wd = 'normals_' + self.res + '/' + self.var
+        elif self.day == '':
+            wd = 'monthly/' + self.var + '/' + self.year
+        else:
+            wd = 'daily/' + self.var + '/' + self.year
+
+        self.ftp.cwd(wd)
+
+    def downloadFTP(self, dirname, var, res='4km', year=None, month=None, day=None, normals=False, extract=True,
+                    remove_zip=True, overwrite=True):
         if self.ftp is None:
             self.login()
         self.setProperties(var, res, year, month, day, normals)
+        self.buildFTPFilename()
+        self.changeCWD_FTP()
+        print(self.fn)
+        os.chdir(dirname)
+        file = open(self.fn, 'wb')
+        self.ftp.retrbinary("RETR " + self.fn, file.write)
+        file.close()
+        self.ftp.cwd('/')
+        if extract:
+            self.extract(dirname + '/' + self.fn, dirname, remove_zip)
 
-    def downloadWebServices(self, fn, var, res='4km', year=None, month=None, day=None, normals=False, overwrite=True):
+    def downloadWebServices(self, fn, var, res='4km', year=None, month=None, day=None, normals=False, overwrite=True,
+                            extract=True, extract_dir=None, remove_zip=True):
         self.setProperties(var, res, year, month, day, normals)
         self.buildURL()
         if overwrite:
@@ -61,6 +84,8 @@ class PRISMDownloader:
                 os.remove(fn)
         print(self.url)
         wget.download(self.url, fn)
+        if extract:
+            self.extract(fn, extract_dir, remove_zip)
 
     def extract(self, fn, dirname=None, remove_zip=True):
         if os.path.isfile(fn):
