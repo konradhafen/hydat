@@ -1,5 +1,6 @@
 import datetime
 import os
+import zipfile
 import wget
 
 class PRISMDownloader:
@@ -30,6 +31,32 @@ class PRISMDownloader:
                 self.url = self.url_base + "/" + self.res + "/" + self.var + "/" + self.year
             else:
                 raise Exception('A valid year must be specified')
+
+    def downloadFTP(self, fn, var, res='4km', year=None, month=None, day=None, normals=False, overwrite=True):
+        self.setProperties(var, res, year, month, day, normals)
+
+    def downloadWebServices(self, fn, var, res='4km', year=None, month=None, day=None, normals=False, overwrite=True):
+        self.setProperties(var, res, year, month, day, normals)
+        self.buildURL()
+        if overwrite:
+            if os.path.exists(fn):
+                os.remove(fn)
+        print(self.url)
+        wget.download(self.url, fn)
+
+    def extract(self, fn, dirname=None, remove_zip=True):
+        if os.path.isfile(fn):
+            if dirname is None:
+                dirname = os.path.dirname(fn)
+            if not os.path.exists(dirname):
+                os.mkdir(dirname)
+            zfile = zipfile.ZipFile(fn, 'r')
+            zfile.extractall(dirname)
+            zfile.close()
+            if remove_zip:
+                os.remove(fn)
+        else:
+            raise FileExistsError('The file {} does not exist')
 
     def setDay(self, day):
         if day is None:
@@ -74,6 +101,14 @@ class PRISMDownloader:
         else:
             raise TypeError("Must use boolean value to set normals")
 
+    def setProperties(self, var, res, year, month, day, normals):
+        self.setVar(var)
+        self.setResolution(res)
+        self.setYear(year)
+        self.setMonth(month)
+        self.setDay(day)
+        self.setNormals(normals)
+
     def setResolution(self, res):
         if res is 800 or res is '800m':
             self.res = '800m'
@@ -100,17 +135,3 @@ class PRISMDownloader:
                 self.year = str(year)
                 if year < self.hist_year:
                     self.is_historical = True
-
-    def download(self, fn, var, res='4km', year=None, month=None, day=None, normals=False, overwrite=True):
-        self.setVar(var)
-        self.setResolution(res)
-        self.setYear(year)
-        self.setMonth(month)
-        self.setDay(day)
-        self.setNormals(normals)
-        self.buildURL()
-        if overwrite:
-            if os.path.exists(fn):
-                os.remove(fn)
-        print(self.url)
-        #wget.download(self.url, fn)
