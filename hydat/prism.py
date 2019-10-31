@@ -206,6 +206,7 @@ def downloadMonthlyPRISM_FTP(start_year, end_year, output_dir, variables=()):
                 if downloader.is_historical:
                     break
             os.chdir('../')
+            print(var, year, 'downloaded')
         os.chdir('../')
     os.chdir(output_dir)
 
