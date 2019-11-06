@@ -1,5 +1,6 @@
 import netCDF4 as nc
 import numpy as np
+import gdal
 
 
 def copyNetCDF(fn_src, fn_dst, exclude_vars=[], exclude_data=[]):
@@ -50,5 +51,75 @@ def createMonthlySWENetCDF(fn_src, fn_dst, varname):
     return
 
 
-def indexRaster():
+def indexRaster(src, dst, is_netcdf=False, var_name=None, no_data=-9999.0):
+    if is_netcdf:
+        ds = gdal.Open("NETCDF:" + src + ":" + var_name)
+    else:
+        ds = gdal.Open(src)
+
+    band = ds.GetRasterBand(1).ReadAsArray()
+
+    idx = np.arange(0, ds.RasterXSize*ds.RasterYSize).reshape((ds.RasterYSize, ds.RasterXSize))
+    print(idx.shape, band.shape)
+    idx[band == no_data] = no_data
+    writeArrayAsRaster(dst, idx, ds.RasterYSize, ds.RasterXSize, ds.GetGeoTransform(), ds.GetProjection(),
+                       nodata=no_data, nan=no_data)
+
+    # if ds is not None:
+    #     print(ds.GetProjection())
+    #     geot = ds.GetGeoTransform()
+    #     proj = ds.GetProjection()
+    #     # print("min x: ", geot[0], "max x:", geot[0] + ds.RasterXSize*geot[1], "min y: ", geot[3] + ds.RasterYSize*geot[5], "max y:", geot[3])
+    #     minx = geot[0]-0.0*geot[1]
+    #     maxy = geot[3]-0.5*geot[5]
+    #     extent = (minx, maxy + ds.RasterYSize*geot[5], minx + ds.RasterXSize*geot[1], maxy)
+    #     gdal.Warp(fn_out, fn, dstSRS='EPSG:5070', outputBounds=extent, outputBoundsSRS=proj, width=ds.RasterXSize, height=ds.RasterYSize)
+    #     # gdal.Warp(fn_out, fn, dstSRS='EPSG:5070', width=ds.RasterXSize, height=ds.RasterYSize)
+    # else:
+    #     print("error opening netcdf")
+
+    print('done')
     return
+
+
+def writeArrayAsRaster(path, array, rows, cols, geot, srs, nodata=-9999.0, nan=-9999.0, datatype=gdal.GDT_Float32,
+                       drivername='GTiff'):
+    """
+    Write array to a raster dataset
+
+    Args:
+        path: output file for raster
+        array: array containing data
+        rows: number of rows in array
+        cols: number of columns in array
+        geot: affine geotransformation for the output raster
+        srs: spatial reference for the output raster (default: None)
+        nodata: no data value for the output raster (default: -9999)
+        nan: value in array that should be written as nodata (default: -9999)
+        datatype: gdal data type of output raster (default: GDT_Float32)
+        drivername: Name of GDAL driver to use to create raster (default: 'GTiff')
+
+    Returns:
+        None
+
+    """
+    driver = gdal.GetDriverByName(drivername)
+    bands = 1
+    multi = False
+    if len(array.shape) == 3:
+        bands = array.shape[0]
+        multi = True
+    ds = driver.Create(path, xsize=cols, ysize=rows, bands=bands, eType=datatype)
+    ds.SetProjection(srs)
+    ds.SetGeoTransform(geot)
+    array = np.where((array==np.nan) | (array==nan), nodata, array)
+    for band in range(bands):
+        print('writing band', band+1, 'of', bands)
+        if multi:
+            ds.GetRasterBand(band+1).WriteArray(array[band,:,:])
+        else:
+            ds.GetRasterBand(band + 1).WriteArray(array)
+        ds.GetRasterBand(band+1).SetNoDataValue(nodata)
+        ds.GetRasterBand(band+1).FlushCache()
+    ds = None
+    return None

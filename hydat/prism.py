@@ -27,9 +27,13 @@ class PRISMDownloader:
     def buildFTPFilename(self):
         allvar = ''
         monthvar = ''
+        if self.day != '':
+            raise Exception('FTP download is currently only possible for monthly data')
         if self.is_historical:
             if self.var == 'ppt':
                 self.mversion = 'M2'
+            else:
+                self.mversion = 'M3'
             allvar = '_all'
         else:
             self.mversion = 'M3'
@@ -187,6 +191,7 @@ class PRISMDownloader:
                     self.is_historical = True
                 else:
                     self.is_historical = False
+
 
 def downloadMonthlyPRISM_FTP(start_year, end_year, output_dir, variables=()):
     downloader = PRISMDownloader()
