@@ -191,27 +191,3 @@ class PRISMDownloader:
                     self.is_historical = True
                 else:
                     self.is_historical = False
-
-
-def downloadMonthlyPRISM_FTP(start_year, end_year, output_dir, variables=()):
-    downloader = PRISMDownloader()
-    if not os.path.exists(output_dir):
-        os.mkdir(output_dir)
-    os.chdir(output_dir)
-    for var in variables:
-        if not os.path.exists(var):
-            os.mkdir(var)
-        os.chdir(var)
-        for year in range(start_year, end_year+1):
-            if not os.path.exists(str(year)):
-                os.mkdir(str(year))
-            os.chdir(str(year))
-            for month in range(1, 13):
-                downloader.downloadFTP(var, year=year, month=month)
-                if downloader.is_historical:
-                    break
-            os.chdir('../')
-            print(var, year, 'downloaded')
-        os.chdir('../')
-    os.chdir(output_dir)
-
