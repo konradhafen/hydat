@@ -48,4 +48,4 @@ def monthlyGridsToNumpy(out_fn, start_year, end_year, in_dir, pvar):
                 out_arr = np.empty((temp_arr.size, ncol), dtype=np.float)
             colidx = (year - start_year) * 12 + month
             out_arr[:, colidx] = temp_arr.flatten()
-    np.save(out_fn)
+    np.save(out_fn, out_arr)
